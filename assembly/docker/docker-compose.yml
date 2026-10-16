@@ -1,0 +1,83 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-assembly}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-12345}
+      POSTGRES_DB: ${POSTGRES_DB:-assembly}
+    ports:
+      - "${POSTGRES_PORT:-5441}:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-assembly} -d ${POSTGRES_DB:-assembly}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-assembly}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-12345}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  consul:
+    image: hashicorp/consul:1.21
+    restart: unless-stopped
+    command: ["agent", "-dev", "-client=0.0.0.0", "-ui", "-node=assembly-consul"]
+    ports:
+      - "${CONSUL_PORT:-8500}:8500"
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-assembly}
+      DB_USERNAME: ${POSTGRES_USER:-assembly}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-12345}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-assembly}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-12345}
+      APP_TIME_ZONE: ${APP_TIME_ZONE:-America/Sao_Paulo}
+      DEFAULT_VOTING_DURATION_MINUTES: ${DEFAULT_VOTING_DURATION_MINUTES:-1}
+      ELIGIBILITY_ENABLED: ${ELIGIBILITY_ENABLED:-false}
+      ELIGIBILITY_SERVICE_URL: ${ELIGIBILITY_SERVICE_URL:-https://user-info.herokuapp.com}
+      MOBILE_CONSUL_ENABLED: ${MOBILE_CONSUL_ENABLED:-true}
+      MOBILE_CONSUL_ADDRESS: ${MOBILE_CONSUL_ADDRESS:-http://consul:8500}
+      MOBILE_CONSUL_KEY: ${MOBILE_CONSUL_KEY:-sdui/mobile-screens}
+      MOBILE_CONSUL_TOKEN: ${MOBILE_CONSUL_TOKEN:-}
+      MOBILE_CONSUL_POLL_INTERVAL_MS: ${MOBILE_CONSUL_POLL_INTERVAL_MS:-5000}
+      MOBILE_CONSUL_CONNECT_TIMEOUT: ${MOBILE_CONSUL_CONNECT_TIMEOUT:-PT2S}
+      MOBILE_CONSUL_READ_TIMEOUT: ${MOBILE_CONSUL_READ_TIMEOUT:-PT3S}
+      MOBILE_SURVEY_LIMIT: ${MOBILE_SURVEY_LIMIT:-100}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+
+volumes:
+  pg-data:

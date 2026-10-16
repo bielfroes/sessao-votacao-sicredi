@@ -1,0 +1,99 @@
+-- Development sample data. Apply only after Flyway has created the schema.
+BEGIN;
+
+INSERT INTO elector (cpf, status)
+VALUES
+    ('10000000108', 'ABLE_TO_VOTE'),
+    ('10000000280', 'ABLE_TO_VOTE'),
+    ('10000000361', 'ABLE_TO_VOTE'),
+    ('10000000442', 'ABLE_TO_VOTE'),
+    ('10000000523', 'ABLE_TO_VOTE'),
+    ('10000000604', 'ABLE_TO_VOTE'),
+    ('10000000795', 'ABLE_TO_VOTE'),
+    ('10000000876', 'ABLE_TO_VOTE'),
+    ('10000000957', 'ABLE_TO_VOTE'),
+    ('10000001090', 'ABLE_TO_VOTE')
+ON CONFLICT (cpf) DO NOTHING;
+
+INSERT INTO survey (created_at, end_time, question, status)
+SELECT CURRENT_TIMESTAMP,
+       (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo')
+           + seed.duration_minutes * INTERVAL '1 minute',
+       seed.question,
+       'OPEN'
+FROM (VALUES
+    ('Aprovar as contas do último mês?', 10),
+    ('Contratar um novo serviço de manutenção?', 11),
+    ('Realizar melhorias nas áreas comuns?', 12),
+    ('Ajustar o valor da contribuição mensal?', 13),
+    ('Permitir animais de estimação nas áreas comuns?', 14),
+    ('Definir horário de silêncio para eventos?', 15),
+    ('Instalar câmeras nas áreas comuns?', 16),
+    ('Contratar novo serviço de segurança?', 17),
+    ('Reformar a fachada do prédio?', 18),
+    ('Implementar coleta seletiva?', 19)
+) AS seed(question, duration_minutes)
+WHERE NOT EXISTS (
+    SELECT 1 FROM survey existing WHERE existing.question = seed.question
+);
+
+INSERT INTO voting_session (survey_id, opened_at, end_time, status)
+SELECT survey.id,
+       survey.created_at,
+       survey.end_time AT TIME ZONE 'America/Sao_Paulo',
+       'OPEN'
+FROM survey
+WHERE survey.question IN (
+    'Aprovar as contas do último mês?',
+    'Contratar um novo serviço de manutenção?',
+    'Realizar melhorias nas áreas comuns?',
+    'Ajustar o valor da contribuição mensal?',
+    'Permitir animais de estimação nas áreas comuns?',
+    'Definir horário de silêncio para eventos?',
+    'Instalar câmeras nas áreas comuns?',
+    'Contratar novo serviço de segurança?',
+    'Reformar a fachada do prédio?',
+    'Implementar coleta seletiva?'
+)
+  AND survey.status = 'OPEN'
+  AND survey.end_time > CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM voting_session session
+      WHERE session.survey_id = survey.id AND session.status = 'OPEN'
+  );
+
+WITH seed_survey(question) AS (
+    VALUES
+        ('Aprovar as contas do último mês?'),
+        ('Contratar um novo serviço de manutenção?'),
+        ('Realizar melhorias nas áreas comuns?'),
+        ('Ajustar o valor da contribuição mensal?'),
+        ('Permitir animais de estimação nas áreas comuns?'),
+        ('Definir horário de silêncio para eventos?'),
+        ('Instalar câmeras nas áreas comuns?'),
+        ('Contratar novo serviço de segurança?'),
+        ('Reformar a fachada do prédio?'),
+        ('Implementar coleta seletiva?')
+),
+seed_elector(cpf) AS (
+    VALUES
+        ('10000000108'), ('10000000280'), ('10000000361'), ('10000000442'),
+        ('10000000523'), ('10000000604'), ('10000000795'), ('10000000876'),
+        ('10000000957'), ('10000001090')
+),
+numbered_votes AS (
+    SELECT survey.id AS survey_id,
+           elector.id AS elector_id,
+           ROW_NUMBER() OVER (PARTITION BY survey.id ORDER BY elector.cpf) AS voter_number
+    FROM seed_survey
+    JOIN survey ON survey.question = seed_survey.question
+    CROSS JOIN seed_elector
+    JOIN elector ON elector.cpf = seed_elector.cpf
+)
+INSERT INTO vote (survey_id, elector_id, approval)
+SELECT survey_id, elector_id, voter_number % 3 <> 0
+FROM numbered_votes
+ON CONFLICT (survey_id, elector_id) DO NOTHING;
+
+COMMIT;
