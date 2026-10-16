@@ -1,0 +1,95 @@
+[
+  {
+    "tipo": "FORMULARIO",
+    "titulo": "Criar pauta",
+    "itens": [
+      {
+        "tipo": "TEXTO",
+        "texto": "Informe a descrição da pauta."
+      },
+      {
+        "tipo": "INPUT_TEXTO",
+        "id": "question",
+        "titulo": "Descrição da pauta",
+        "valor": "",
+        "123": ""
+      }
+    ],
+    "botaoOk": {
+      "texto": "Criar pauta",
+      "url": "/api/v1/surveys",
+      "body": {}
+    },
+    "botaoCancelar": {
+      "texto": "Cancelar",
+      "url": "/api/v1/mobile/screens"
+    }
+  },
+  {
+    "tipo": "FORMULARIO",
+    "titulo": "Abrir votação",
+    "itens": [
+      {
+        "tipo": "INPUT_NUMERO",
+        "id": "surveyId",
+        "titulo": "Pauta",
+        "valor": null
+      },
+      {
+        "tipo": "INPUT_NUMERO",
+        "id": "minutes",
+        "titulo": "Duração em minutos",
+        "valor": null
+      }
+    ],
+    "botaoOk": {
+      "texto": "Abrir sessão",
+      "url": "/api/v1/surveys/{surveyId}/sessions",
+      "body": {}
+    },
+    "botaoCancelar": {
+      "texto": "Cancelar",
+      "url": "/api/v1/mobile/screens"
+    }
+  },
+  {
+    "tipo": "FORMULARIO",
+    "titulo": "Registrar voto",
+    "itens": [
+      {
+        "tipo": "INPUT_NUMERO",
+        "id": "surveyId",
+        "titulo": "Pauta",
+        "valor": null
+      },
+      {
+        "tipo": "INPUT_NUMERO",
+        "id": "electorId",
+        "titulo": "Associado",
+        "valor": null
+      },
+      {
+        "tipo": "SELECAO",
+        "id": "approval",
+        "titulo": "Voto",
+        "valor": ["SIM", "NAO"]
+      }
+    ],
+    "botaoOk": {
+      "texto": "Votar",
+      "url": "/api/v1/votes",
+      "body": {}
+    },
+    "botaoCancelar": {
+      "texto": "Cancelar",
+      "url": "/api/v1/mobile/screens"
+    }
+  },
+  {
+    "tipo": "SELECAO",
+    "titulo": "Selecionar pauta",
+    "itens": [],
+    "fonteDados": "PAUTAS",
+    "urlItem": "/api/v1/results/{surveyId}"
+  }
+]
