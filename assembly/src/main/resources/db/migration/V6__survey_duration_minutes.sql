@@ -1,0 +1,2 @@
+ALTER TABLE survey
+    ADD COLUMN IF NOT EXISTS duration_minutes BIGINT NOT NULL DEFAULT 1;

@@ -1,0 +1,6 @@
+package com.froes.assembly.dto;
+
+import jakarta.validation.constraints.Positive;
+
+public record VotingSessionRequestDTO(@Positive Long minutes) {
+}
